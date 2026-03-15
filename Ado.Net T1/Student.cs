@@ -18,6 +18,10 @@ namespace Ado.Net_T1
 			Name = name;
 			Age = age;
 		}
+		public Student()
+		{
+			
+		}
 		public override string ToString()
 		{
 			return $"Id - {Id}, Name - {Name}, Age - {Age}";

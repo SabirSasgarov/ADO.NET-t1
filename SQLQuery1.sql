@@ -19,3 +19,4 @@ INSERT INTO StudentsTB VALUES
 
 SELECT * FROM StudentsTB
 
+SELECT * FROM StudentsTB WHERE Name LIKE '%s%'
