@@ -1,9 +1,4 @@
-﻿using Azure.Core;
-using Microsoft.Data.SqlClient;
-using System;
-using System.Xml.Serialization;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using Microsoft.Data.SqlClient;
 
 namespace Ado.Net_T1
 {
@@ -12,7 +7,7 @@ namespace Ado.Net_T1
 		static void Main(string[] args)
 		{
 			Console.WriteLine("T - Test connection\n1 - Get all\n2 - Add\n3 - Search by name\n" +
-				"4 - Update student\n5 - Delete student\n0 - Clear\nQ - Quit");
+				"4 - Update student\n5 - Delete student\n6 - Pagination\n0 - Clear\nQ - Quit");
 			while (true)
 			{
 				Console.Write("Enter new operation: \n->");
@@ -54,6 +49,12 @@ namespace Ado.Net_T1
 						DeleteById(deleteId);
 						break;
 
+					case "6":
+						Console.WriteLine("Enter page size for pagination: ");
+						int pageSize = int.Parse(Console.ReadLine());
+						Pagination(pageSize);
+						break;
+
 					case "q" or "Q":
 						Console.WriteLine("---Exit---");
 						return;
@@ -65,7 +66,7 @@ namespace Ado.Net_T1
 					case "0":
 						Console.Clear();
 						Console.WriteLine("T - Test connection\n1 - Get all\n2 - Add\n3 - Search by name" +
-							"\n4 - Update student\n5 - Delete student\n0 - Clear\nQ - Quit");
+							"\n4 - Update student\n5 - Delete student\n6 - Pagination\n0 - Clear\nQ - Quit");
 						break;
 					default:
 						Console.WriteLine("Wrong operation!\n");
@@ -186,9 +187,82 @@ namespace Ado.Net_T1
 		}
 
 		//7
-		static void Pagination()
+		static void Pagination(int pageSize)
 		{
+			SqlConnection conn = Connection();
 
+			string queryCount = "SELECT COUNT(*) FROM StudentsTB";
+			SqlCommand cmd = new SqlCommand(queryCount, conn);
+			int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
+			//int totalCount = (int)cmd.ExecuteScalar();
+
+			Console.WriteLine("1 - To get all pages\n2 - To get exact page");
+			string opp = Console.ReadLine();
+			switch (opp)
+			{
+				case "1":
+					string query = "SELECT * FROM StudentsTB ORDER BY Id OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY";
+					int count = default;
+					while (pageSize * count < totalCount)
+					{
+						cmd = new SqlCommand(query, conn);
+						cmd.Parameters.AddWithValue("@offset", pageSize * count);
+						cmd.Parameters.AddWithValue("@pageSize", pageSize);
+						SqlDataReader reader = cmd.ExecuteReader();
+						Console.WriteLine($"Page {count + 1}:");
+						while (reader.Read())
+						{
+							if (reader.HasRows)
+							{
+								int id = Convert.ToInt32(reader["Id"]);
+								string name = Convert.ToString(reader["Name"]);
+								int age = Convert.ToInt32(reader["Age"]);
+								Student newStudent = new Student(id, name, age);
+								Console.WriteLine(newStudent);
+							}
+						}
+						reader.Close();
+						count++;
+					}
+					break;
+
+				case "2":
+					Console.WriteLine("Enter page: ");
+					int pageN = int.Parse(Console.ReadLine());
+					if (pageN <= 0)
+					{	
+						Console.WriteLine("Page number must be positive!");
+						return;
+					}
+					else if ((totalCount % pageSize == 0 && pageN * pageSize > totalCount) || (totalCount % pageSize != 0 && pageN * pageSize > totalCount + pageSize))
+					{
+						Console.WriteLine("No such page!");
+						return;
+					}
+					query = "SELECT * FROM StudentsTB ORDER BY Id OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY";
+					cmd = new SqlCommand(query, conn);
+					cmd.Parameters.AddWithValue("@offset", pageSize * (pageN - 1));
+					cmd.Parameters.AddWithValue("@pageSize", pageSize);
+					SqlDataReader newReader = cmd.ExecuteReader();
+					Console.WriteLine($"Page {pageN}:");
+					while (newReader.Read())
+					{
+						if (newReader.HasRows)
+						{
+							int id = Convert.ToInt32(newReader["Id"]);
+							string name = Convert.ToString(newReader["Name"]);
+							int age = Convert.ToInt32(newReader["Age"]);
+							Student newStudent = new Student(id, name, age);
+							Console.WriteLine(newStudent);
+						}
+					}
+					newReader.Close();
+					break;
+
+				default:
+					Console.WriteLine("Wrong operation!");
+					break;
+			}
 		}
 	}
 }
